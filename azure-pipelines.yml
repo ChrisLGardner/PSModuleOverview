@@ -1,17 +1,23 @@
 name: $(Major).$(Minor).$(rev:r)
 
 variables:
-- Major: 1
-- Minor: 0
+  Major: 1
+  Minor: 0
 
 resources:
 - repo: self
+
+trigger:
+  - master
 
 pool:
   name: Hosted VS2017
 steps:
 - task: richardfennellBM.BM-VSTS-Versioning-Task.Version-PowerShellModule-Task.VersionPowerShellModule@2
   displayName: 'Version PowerShell Modules'
+  inputs:
+    VersionRegex: '\d+\.\d+\.\d+'
+
 
 - task: richardfennellBM.BM-VSTS-PesterRunner-Task.Pester-Task.Pester@8
   displayName: 'Pester Test Runner'
@@ -28,12 +34,14 @@ steps:
     testResultsFormat: NUnit
     testResultsFiles: '**/Test.xml'
   enabled: false
+  condition: succeededOrFailed()
 
 - task: PublishCodeCoverageResults@1
   displayName: 'Publish code coverage from $(System.DefaultWorkingDirectory)\Coverage.xml'
   inputs:
     summaryFileLocation: '$(System.DefaultWorkingDirectory)\Coverage.xml'
   enabled: false
+  condition: succeededOrFailed()
 
 - task: CopyFiles@2
   displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)'
@@ -46,6 +54,6 @@ steps:
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact: PSModuleOverview'
-  Condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
   inputs:
     ArtifactName: PSModuleOverview
