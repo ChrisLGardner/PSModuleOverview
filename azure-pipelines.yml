@@ -1,0 +1,51 @@
+name: $(Major).$(Minor).$(rev:r)
+
+variables:
+- Major: 1
+- Minor: 0
+
+resources:
+- repo: self
+
+pool:
+  name: Hosted VS2017
+steps:
+- task: richardfennellBM.BM-VSTS-Versioning-Task.Version-PowerShellModule-Task.VersionPowerShellModule@2
+  displayName: 'Version PowerShell Modules'
+
+- task: richardfennellBM.BM-VSTS-PesterRunner-Task.Pester-Task.Pester@8
+  displayName: 'Pester Test Runner'
+  inputs:
+    scriptFolder: '$(System.DefaultWorkingDirectory)\Tests\*'
+    resultsFile: '$(System.DefaultWorkingDirectory)\Test.xml'
+    CodeCoverageOutputFile: '$(System.DefaultWorkingDirectory)\Coverage.xml'
+    CodeCoverageFolder: '$(System.DefaultWorkingDirectory)\PSModuleDevelopment.psm1'
+  enabled: false
+
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results **/Test.xml'
+  inputs:
+    testResultsFormat: NUnit
+    testResultsFiles: '**/Test.xml'
+  enabled: false
+
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish code coverage from $(System.DefaultWorkingDirectory)\Coverage.xml'
+  inputs:
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)\Coverage.xml'
+  enabled: false
+
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)'
+  inputs:
+    Contents: |
+     **\*.psm1
+     **\*.psd1
+     **\LICENSE
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: PSModuleOverview'
+  Condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  inputs:
+    ArtifactName: PSModuleOverview
